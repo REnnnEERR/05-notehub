@@ -1,24 +1,32 @@
-import ReactPaginate from 'react-paginate';
+import type { ComponentType } from "react";
+import ReactPaginateModule from "react-paginate";
+import type { ReactPaginateProps } from "react-paginate";
 import css from './Pagination.module.css';
+
+type ModuleWithDefault<T> = { default: T };
+
+const ReactPaginate = (
+  ReactPaginateModule as unknown as ModuleWithDefault<ComponentType<ReactPaginateProps>>
+).default;
 
 interface PaginationProps {
   pageCount: number;
+  currentPage: number; 
   onPageChange: (selectedItem: { selected: number }) => void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const ReactPaginateFix = (ReactPaginate as unknown as { default?: any }).default || ReactPaginate;
-
-export const Pagination = ({ pageCount, onPageChange }: PaginationProps) => {
+export const Pagination = ({ pageCount, currentPage, onPageChange }: PaginationProps) => {
   return (
-    <ReactPaginateFix
+    <ReactPaginate
+      forcePage={currentPage - 1} 
+      pageCount={pageCount}
+      onPageChange={onPageChange}
+      
       previousLabel="<"
       nextLabel=">"
       breakLabel="..."
-      pageCount={pageCount}
       marginPagesDisplayed={2}
       pageRangeDisplayed={5}
-      onPageChange={onPageChange}
       containerClassName={css.pagination}
       activeClassName={css.active}
       pageClassName={css.pageItem}

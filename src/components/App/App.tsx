@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useDebouncedCallback } from 'use-debounce';
 
-import { fetchNotes, deleteNote, createNote } from '../../services/noteService';
+import { fetchNotes } from '../../services/noteService';
 import NoteList from '../NoteList/NoteList';
 import { Pagination } from '../Pagination/Pagination';
 import SearchBox from '../SearchBox/SearchBox';
@@ -13,18 +12,16 @@ import NoteForm from '../NoteForm/NoteForm';
 import css from './App.module.css';
 
 const App = () => {
-  const queryClient = useQueryClient();
-  
-  
+  // 1. Стейт для пагінації, пошуку та модалки
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  
+  // 2. Дебаунс для пошуку
   const handleSearch = useDebouncedCallback((value: string) => {
     setDebouncedSearch(value);
-    setPage(1);
+    setPage(1); // Скидаємо на 1 сторінку при новому пошуку
   }, 500);
 
   const onSearchChange = (value: string) => {
@@ -32,31 +29,11 @@ const App = () => {
     handleSearch(value);
   };
 
-  
+  // 3. Отримання даних (Завдання 8 - додано placeholderData)
   const { data, isLoading, isError } = useQuery({
     queryKey: ['notes', page, debouncedSearch],
     queryFn: () => fetchNotes(page, debouncedSearch),
-  });
-
-  
-  const { mutate: removeNote } = useMutation({
-    mutationFn: deleteNote,
-    onSuccess: () => {
-      toast.success('Нотатку успішно видалено!');
-      queryClient.invalidateQueries({ queryKey: ['notes'] });
-    },
-    onError: () => toast.error('Не вдалося видалити нотатку...'),
-  });
-
-  
-  const { mutate: addNote } = useMutation({
-    mutationFn: createNote,
-    onSuccess: () => {
-      toast.success('Нотатка успішно створена!');
-      queryClient.invalidateQueries({ queryKey: ['notes'] });
-      setIsModalOpen(false); 
-    },
-    onError: () => toast.error('Помилка при створенні нотатки'),
+    placeholderData: keepPreviousData, // Рятує від мерехтіння при зміні сторінок
   });
 
   const handlePageClick = (selectedItem: { selected: number }) => {
@@ -73,6 +50,7 @@ const App = () => {
         {data && data.totalPages > 1 && (
           <Pagination 
             pageCount={data.totalPages} 
+            currentPage={page} // Передаємо поточну сторінку (Завдання 6)
             onPageChange={handlePageClick} 
           />
         )}
@@ -87,22 +65,15 @@ const App = () => {
         {isError && <p className={css.status}>Помилка завантаження. Перевір токен!</p>}
         
         {data && data.notes.length > 0 ? (
-          <NoteList 
-            notes={data.notes} 
-            onDelete={(id) => removeNote(id)} 
-          />
+          <NoteList notes={data.notes} /> 
         ) : (
           !isLoading && <p className={css.status}>Нотаток не знайдено...</p>
         )}
       </main>
 
-      {/* Модалка з формою */}
       {isModalOpen && (
         <Modal onClose={() => setIsModalOpen(false)}>
-          <NoteForm 
-            onSubmit={(values) => addNote(values)} 
-            onCancel={() => setIsModalOpen(false)} 
-          />
+          <NoteForm onCancel={() => setIsModalOpen(false)} />
         </Modal>
       )}
     </div>

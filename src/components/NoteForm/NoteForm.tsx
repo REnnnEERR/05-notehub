@@ -2,9 +2,11 @@ import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import type { NoteTag } from '../../types/note';
 import css from './NoteForm.module.css';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { createNote } from '../../services/noteService';
+import toast from 'react-hot-toast'; 
 
 interface NoteFormProps {
-  onSubmit: (values: NoteFormValues) => void;
   onCancel: () => void;
 }
 
@@ -26,18 +28,38 @@ const validationSchema = Yup.object({
     .required("Оберіть тег"),
 });
 
-const NoteForm = ({ onSubmit, onCancel }: NoteFormProps) => {
+const NoteForm = ({ onCancel }: NoteFormProps) => {
+  const queryClient = useQueryClient();
+
+  
+  const { mutate } = useMutation({
+    mutationFn: createNote,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      toast.success('Нотатку успішно створено!');
+      onCancel(); 
+    },
+    onError: () => {
+      toast.error('Щось пішло не так при створенні...');
+    }
+  });
+
   const initialValues: NoteFormValues = {
     title: '',
     content: '',
     tag: 'Todo',
   };
 
+  
+  const handleSubmit = (values: NoteFormValues) => {
+    mutate(values);
+  };
+
   return (
     <Formik
       initialValues={initialValues}
       validationSchema={validationSchema}
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
     >
       {({ isSubmitting }) => (
         <Form className={css.form}>
